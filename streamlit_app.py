@@ -14,9 +14,13 @@ if uploaded_file1 and uploaded_file2:
     df1 = df1.rename(columns=lambda x: x.strip().lower())
     df2 = df2.rename(columns=lambda x: x.strip().lower())
 
-    # Merge on stock name
-    merged = pd.merge(df1, df2, on="stock name", suffixes=("_1", "_2"))
-    merged["Difference"] = merged["% chg_1"] - merged["% chg_2"]
+# Merge on stock name
+merged = pd.merge(df1, df2, on="Stock Name", suffixes=("_1", "_2"))
+
+# Clean %Chg columns and calculate Difference
+merged["%Chg_1"] = merged["%Chg_1"].replace("%","", regex=True).astype(float)
+merged["%Chg_2"] = merged["%Chg_2"].replace("%","", regex=True).astype(float)
+merged["Difference"] = merged["%Chg_1"] - merged["%Chg_2"]
 
     st.dataframe(merged[["stock name", "% chg_1", "% chg_2", "Difference"]])
 
