@@ -22,9 +22,13 @@ if file1 and file2:
     # Calculate Difference
     merged["Difference"] = merged["%Chg_1"] - merged["%Chg_2"]
 
-    # Show results
+    # Show results with Price
     st.subheader("📑 Comparison Result")
-    st.dataframe(merged[["Stock Name", "%Chg_1", "%Chg_2", "Difference"]])
+    st.dataframe(merged[[
+        "Stock Name", 
+        "%Chg_1", "%Chg_2", "Difference",
+        "Price_1", "Price_2"
+    ]])
 
     # Download as Excel
     out_file = "comparison_result.xlsx"
