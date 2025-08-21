@@ -22,7 +22,7 @@ merged["%Chg_1"] = merged["%Chg_1"].replace("%","", regex=True).astype(float)
 merged["%Chg_2"] = merged["%Chg_2"].replace("%","", regex=True).astype(float)
 merged["Difference"] = merged["%Chg_1"] - merged["%Chg_2"]
 
-    st.dataframe(merged[["stock Name", "% chg_1", "% chg_2", "Difference"]])
+    st.dataframe(merged[["stock name", "% chg_1", "% chg_2", "Difference"]])
 
     st.download_button(
         "📥 Download CSV",
