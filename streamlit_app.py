@@ -44,3 +44,9 @@ if file1 and file2:
             file_name="comparison_result.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+        # Sort by % Chg_1 in descending order
+merged = merged.sort_values(by="% Chg_1", ascending=False)
+
+# Show results
+st.dataframe(merged[["Stock Name", "% Chg_1", "% Chg_2", "Difference", "Price_1", "Price_2", "Price Difference"]])
+
