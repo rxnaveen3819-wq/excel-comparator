@@ -1,34 +1,39 @@
 import streamlit as st
 import pandas as pd
 
-st.title("📊 Excel %Chg Comparator")
+st.title("📊 Excel Comparator")
 
-uploaded_file1 = st.file_uploader("Upload Excel 1", type=["csv", "xlsx"])
-uploaded_file2 = st.file_uploader("Upload Excel 2", type=["csv", "xlsx"])
+# Upload two Excel files
+file1 = st.file_uploader("Upload First Excel File", type=["xlsx", "xls"])
+file2 = st.file_uploader("Upload Second Excel File", type=["xlsx", "xls"])
 
-if uploaded_file1 and uploaded_file2:
-    df1 = pd.read_excel(uploaded_file1) if uploaded_file1.name.endswith("xlsx") else pd.read_csv(uploaded_file1)
-    df2 = pd.read_excel(uploaded_file2) if uploaded_file2.name.endswith("xlsx") else pd.read_csv(uploaded_file2)
+if file1 and file2:
+    # Read Excel files
+    df1 = pd.read_excel(file1)
+    df2 = pd.read_excel(file2)
 
-    # Normalize column names
-    df1 = df1.rename(columns=lambda x: x.strip().lower())
-    df2 = df2.rename(columns=lambda x: x.strip().lower())
+    # Merge on Stock Name
+    merged = pd.merge(df1, df2, on="Stock Name", suffixes=("_1", "_2"))
 
-# Merge on Stock Name
-merged = pd.merge(df1, df2, on="Stock Name", suffixes=("_1", "_2"))
+    # Clean %Chg columns (remove % and convert to float)
+    merged["%Chg_1"] = merged["%Chg_1"].replace("%", "", regex=True).astype(float)
+    merged["%Chg_2"] = merged["%Chg_2"].replace("%", "", regex=True).astype(float)
 
-# Clean %Chg columns and calculate Difference
-merged["%Chg_1"] = merged["%Chg_1"].replace("%","", regex=True).astype(float)
-merged["%Chg_2"] = merged["%Chg_2"].replace("%","", regex=True).astype(float)
-merged["Difference"] = merged["%Chg_1"] - merged["%Chg_2"]
+    # Calculate Difference
+    merged["Difference"] = merged["%Chg_1"] - merged["%Chg_2"]
 
-# Show only required columns
-st.dataframe(merged[["Stock Name", "%Chg_1", "%Chg_2", "Difference"]])
+    # Show results
+    st.subheader("📑 Comparison Result")
+    st.dataframe(merged[["Stock Name", "%Chg_1", "%Chg_2", "Difference"]])
 
+    # Download as Excel
+    out_file = "comparison_result.xlsx"
+    merged.to_excel(out_file, index=False)
 
-    st.download_button(
-        "📥 Download CSV",
-        merged.to_csv(index=False),
-        "comparison.csv",
-        "text/csv"
-    )
+    with open(out_file, "rb") as f:
+        st.download_button(
+            label="📥 Download Result Excel",
+            data=f,
+            file_name="comparison_result.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
