@@ -19,15 +19,18 @@ if file1 and file2:
     merged["%Chg_1"] = merged["%Chg_1"].replace("%", "", regex=True).astype(float)
     merged["%Chg_2"] = merged["%Chg_2"].replace("%", "", regex=True).astype(float)
 
-    # Calculate Difference
-    merged["Difference"] = merged["%Chg_1"] - merged["%Chg_2"]
+    # Calculate % Difference
+    merged["%Chg_Diff"] = merged["%Chg_1"] - merged["%Chg_2"]
+
+    # Calculate Price Difference
+    merged["Price_Diff"] = merged["Price_1"] - merged["Price_2"]
 
     # Show results with Price
     st.subheader("📑 Comparison Result")
     st.dataframe(merged[[
         "Stock Name", 
-        "%Chg_1", "%Chg_2", "Difference",
-        "Price_1", "Price_2"
+        "%Chg_1", "%Chg_2", "%Chg_Diff",
+        "Price_1", "Price_2", "Price_Diff"
     ]])
 
     # Download as Excel
