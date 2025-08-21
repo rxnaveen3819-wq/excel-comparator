@@ -1,52 +1,44 @@
 import streamlit as st
 import pandas as pd
 
-st.title("📊 Excel Comparator")
+st.title("📊 Excel Comparator App")
 
 # Upload two Excel files
-file1 = st.file_uploader("Upload First Excel File", type=["xlsx", "xls"])
-file2 = st.file_uploader("Upload Second Excel File", type=["xlsx", "xls"])
+file1 = st.file_uploader("Upload first Excel file", type=["xlsx", "xls"])
+file2 = st.file_uploader("Upload second Excel file", type=["xlsx", "xls"])
 
 if file1 and file2:
     # Read Excel files
     df1 = pd.read_excel(file1)
     df2 = pd.read_excel(file2)
 
-    # Merge on Stock Name
-    merged = pd.merge(df1, df2, on="Stock Name", suffixes=("_1", "_2"))
+    # Standardize column names (strip spaces, lower case)
+    df1.columns = df1.columns.str.strip().str.lower()
+    df2.columns = df2.columns.str.strip().str.lower()
 
-    # Clean %Chg columns (remove % and convert to float)
-    merged["%Chg_1"] = merged["%Chg_1"].replace("%", "", regex=True).astype(float)
-    merged["%Chg_2"] = merged["%Chg_2"].replace("%", "", regex=True).astype(float)
+    # Merge on stock name
+    merged = pd.merge(df1, df2, on="stock name", suffixes=("_1", "_2"))
 
-    # Calculate % Difference
-    merged["%Chg_Diff"] = merged["%Chg_1"] - merged["%Chg_2"]
+    # Convert %Chg to numeric
+    merged["%chg_1"] = merged["%chg_1"].str.replace("%", "").astype(float)
+    merged["%chg_2"] = merged["%chg_2"].str.replace("%", "").astype(float)
 
-    # Calculate Price Difference
-    merged["Price_Diff"] = merged["Price_1"] - merged["Price_2"]
+    # Calculate Differences
+    merged["Difference"] = merged["%chg_1"] - merged["%chg_2"]
+    merged["Price Difference"] = merged["price_1"] - merged["price_2"]
 
-    # Show results with Price
+    # Sort by %chg_1 (descending)
+    merged = merged.sort_values(by="%chg_1", ascending=False)
+
+    # Show results
     st.subheader("📑 Comparison Result")
-    st.dataframe(merged[[
-        "Stock Name", 
-        "%Chg_1", "%Chg_2", "%Chg_Diff",
-        "Price_1", "Price_2", "Price_Diff"
-    ]])
+    st.dataframe(merged[["stock name", "%chg_1", "%chg_2", "Difference",
+                         "price_1", "price_2", "Price Difference"]])
 
-    # Download as Excel
-    out_file = "comparison_result.xlsx"
-    merged.to_excel(out_file, index=False)
-
-    with open(out_file, "rb") as f:
-        st.download_button(
-            label="📥 Download Result Excel",
-            data=f,
-            file_name="comparison_result.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-        # Sort by % Chg_1 in descending order
-merged = merged.sort_values(by="% Chg_1", ascending=False)
-
-# Show results
-st.dataframe(merged[["Stock Name", "% Chg_1", "% Chg_2", "Difference", "Price_1", "Price_2", "Price Difference"]])
-
+    # Download button
+    st.download_button(
+        label="📥 Download Result as Excel",
+        data=merged.to_excel(index=False, engine="openpyxl"),
+        file_name="comparison_result.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
