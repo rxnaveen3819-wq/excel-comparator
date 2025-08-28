@@ -7,25 +7,26 @@ from datetime import datetime
 # Database setup
 # -----------------------------
 conn = sqlite3.connect("mobile_shop.db", check_same_thread=False)
-c = conn.cursor()
+cursor = conn.cursor()
 
 # Create tables if not exist
-c.execute("""
-CREATE TABLE IF NOT EXISTS products (
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS stock (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT UNIQUE,
-    price REAL
+    model TEXT,
+    quantity INTEGER,
+    price REAL,
+    date TEXT
 )
 """)
 
-c.execute("""
-CREATE TABLE IF NOT EXISTS stock (
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS sales (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    product_id INTEGER,
-    qty INTEGER,
-    type TEXT, -- 'INWARD' or 'OUTWARD'
-    date TEXT,
-    FOREIGN KEY(product_id) REFERENCES products(id)
+    model TEXT,
+    quantity INTEGER,
+    price REAL,
+    date TEXT
 )
 """)
 conn.commit()
@@ -33,97 +34,61 @@ conn.commit()
 # -----------------------------
 # Functions
 # -----------------------------
-def add_product(name, price):
-    try:
-        c.execute("INSERT INTO products (name, price) VALUES (?, ?)", (name, price))
-        conn.commit()
-        st.success(f"✅ Product '{name}' added.")
-    except:
-        st.warning("⚠️ Product already exists!")
+def add_stock(model, qty, price):
+    date = datetime.now().strftime("%Y-%m-%d")
+    cursor.execute("INSERT INTO stock (model, quantity, price, date) VALUES (?, ?, ?, ?)",
+                   (model, qty, price, date))
+    conn.commit()
 
-def record_stock(product_name, qty, type_):
-    c.execute("SELECT id FROM products WHERE name=?", (product_name,))
-    product = c.fetchone()
-    if product:
-        c.execute("INSERT INTO stock (product_id, qty, type, date) VALUES (?, ?, ?, ?)",
-                  (product[0], qty, type_, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-        conn.commit()
-        st.success(f"✅ {type_} recorded for {product_name}, Qty: {qty}")
-    else:
-        st.error("❌ Product not found!")
+def sell_mobile(model, qty, price):
+    date = datetime.now().strftime("%Y-%m-%d")
+    cursor.execute("INSERT INTO sales (model, quantity, price, date) VALUES (?, ?, ?, ?)",
+                   (model, qty, price, date))
+    conn.commit()
 
-def get_stock_report():
-    query = """
-    SELECT p.name, 
-           p.price,
-           IFNULL(SUM(CASE WHEN s.type='INWARD' THEN s.qty ELSE 0 END),0) AS inward,
-           IFNULL(SUM(CASE WHEN s.type='OUTWARD' THEN s.qty ELSE 0 END),0) AS outward,
-           IFNULL(SUM(CASE WHEN s.type='INWARD' THEN s.qty ELSE 0 END),0) -
-           IFNULL(SUM(CASE WHEN s.type='OUTWARD' THEN s.qty ELSE 0 END),0) AS balance
-    FROM products p
-    LEFT JOIN stock s ON p.id = s.product_id
-    GROUP BY p.id, p.name, p.price
-    """
-    return pd.read_sql(query, conn)
+def get_stock_balance():
+    stock_df = pd.read_sql("SELECT model, SUM(quantity) as total_inward FROM stock GROUP BY model", conn)
+    sales_df = pd.read_sql("SELECT model, SUM(quantity) as total_sold FROM sales GROUP BY model", conn)
+    merged = pd.merge(stock_df, sales_df, on="model", how="left").fillna(0)
+    merged["balance"] = merged["total_inward"] - merged["total_sold"]
+    return merged
+
+def get_today_sales():
+    today = datetime.now().strftime("%Y-%m-%d")
+    query = "SELECT * FROM sales WHERE date = ?"
+    return pd.read_sql(query, conn, params=(today,))
 
 # -----------------------------
 # Streamlit UI
 # -----------------------------
 st.title("📱 Mobile Shop Management")
 
-menu = ["Add Product", "Inward", "Outward", "Stock Report"]
-choice = st.sidebar.radio("📌 Menu", menu)
+menu = st.sidebar.radio("Menu", ["Inward Stock", "Sell Mobile", "Balance Stock", "Today Sales Report"])
 
-if choice == "Add Product":
-    st.subheader("➕ Add New Product")
-    name = st.text_input("Product Name")
-    price = st.number_input("Price", min_value=0.0, step=0.1)
-    if st.button("Add Product"):
-        if name.strip() != "":
-            add_product(name.strip(), price)
-        else:
-            st.error("❌ Product name cannot be empty.")
+if menu == "Inward Stock":
+    st.subheader("➕ Add New Stock")
+    model = st.text_input("Mobile Model")
+    qty = st.number_input("Quantity", min_value=1, step=1)
+    price = st.number_input("Price", min_value=1000, step=100)
+    if st.button("Add Stock"):
+        add_stock(model, qty, price)
+        st.success(f"{qty} units of {model} added to stock.")
 
-elif choice == "Inward":
-    st.subheader("📦 Inward Entry")
-    products = pd.read_sql("SELECT name FROM products", conn)["name"].tolist()
-    if products:
-        product = st.selectbox("Select Product", products)
-        qty = st.number_input("Quantity", min_value=1)
-        if st.button("Record Inward"):
-            record_stock(product, qty, "INWARD")
-    else:
-        st.warning("⚠️ No products available. Add products first!")
+elif menu == "Sell Mobile":
+    st.subheader("💸 Sell Mobile")
+    model = st.text_input("Mobile Model")
+    qty = st.number_input("Quantity", min_value=1, step=1)
+    price = st.number_input("Selling Price", min_value=1000, step=100)
+    if st.button("Sell"):
+        sell_mobile(model, qty, price)
+        st.success(f"Sold {qty} units of {model}.")
 
-elif choice == "Outward":
-    st.subheader("📤 Outward (Sales) Entry")
-    products = pd.read_sql("SELECT name FROM products", conn)["name"].tolist()
-    if products:
-        product = st.selectbox("Select Product", products)
-        qty = st.number_input("Quantity", min_value=1)
-        if st.button("Record Outward"):
-            record_stock(product, qty, "OUTWARD")
-    else:
-        st.warning("⚠️ No products available. Add products first!")
+elif menu == "Balance Stock":
+    st.subheader("📊 Balance Stock")
+    balance_df = get_stock_balance()
+    st.dataframe(balance_df)
 
-elif choice == "Stock Report":
-    st.subheader("📊 Stock Report")
-    df = get_stock_report()
-    st.dataframe(df)
-
-    # Today's Sales Report
-    today = datetime.now().strftime("%Y-%m-%d")
-    query_today = f"""
-    SELECT p.name, SUM(s.qty) as sold_qty, p.price, SUM(s.qty)*p.price as total_sales
-    FROM stock s
-    JOIN products p ON s.product_id=p.id
-    WHERE s.type='OUTWARD' AND date LIKE '{today}%'
-    GROUP BY p.name, p.price
-    """
-    today_sales = pd.read_sql(query_today, conn)
-    st.write("🛒 **Today's Sales**")
-    st.dataframe(today_sales)
-    if not today_sales.empty:
-        st.write("💰 Total Sales: ", today_sales["total_sales"].sum())
-    else:
-        st.write("💰 Total Sales: 0")
+elif menu == "Today Sales Report":
+    st.subheader("📅 Today Sales")
+    sales_df = get_today_sales()
+    st.dataframe(sales_df)
