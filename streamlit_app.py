@@ -35,12 +35,4 @@ if file1 and file2:
 
     # Calculate Differences
     merged["price_diff"] = merged["price_1"] - merged["price_2"]
-    merged["chg_diff"] = merged["chg_1"] - merged["chg_2"]
-
-    # Order by Chg_Diff desc
-    merged = merged.sort_values(by="chg_diff", ascending=False)
-
-    # Show table
-    st.subheader("📑 Comparison Result")
-    st.dataframe(
-        merge
+    merged["chg_diff"] = merged["chg_1"] - merged["ch]()_]()_]()
