@@ -40,7 +40,15 @@ if file1 and file2:
     merged = merged.sort_values(by="chg_diff", ascending=False)
 
     st.subheader("📈 Comparison Result")
+
+    # Final clean table
     st.dataframe(
         merged[
-            ["stock_name", "symbol", "chg_1", "chg_2", "chg_diff",
-             "price_1", "price_2", "pr
+            [
+                "stock_name", "symbol",
+                "chg_1", "chg_2", "chg_diff",
+                "price_1", "price_2", "price_diff",
+                "volume_1", "volume_2", "volume_diff"
+            ]
+        ]
+    )
