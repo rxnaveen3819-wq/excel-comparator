@@ -1,60 +1,47 @@
 import streamlit as st
 import pandas as pd
-from io import BytesIO
 
-st.title("📊 Excel Stock Comparator")
+st.title("📊 Excel Comparator App")
 
-# File uploader
-file1 = st.file_uploader("Upload Excel File 1", type=["xlsx"])
-file2 = st.file_uploader("Upload Excel File 2", type=["xlsx"])
+# Upload two Excel files
+uploaded_file1 = st.file_uploader("Upload first Excel file", type=["xlsx"])
+uploaded_file2 = st.file_uploader("Upload second Excel file", type=["xlsx"])
 
-# Refresh button
-if st.button("🔄 Refresh"):
-    st.experimental_rerun()
+if uploaded_file1 and uploaded_file2:
+    # Read Excel files
+    df1 = pd.read_excel(uploaded_file1)
+    df2 = pd.read_excel(uploaded_file2)
 
-if file1 and file2:
-    # Read excel files
-    df1 = pd.read_excel(file1)
-    df2 = pd.read_excel(file2)
+    # 🔍 Debug: Show column names to user
+    st.subheader("File 1 Columns")
+    st.write(df1.columns.tolist())
 
-    # Clean column names (lowercase + strip spaces)
-    df1.columns = df1.columns.str.strip().str.lower()
-    df2.columns = df2.columns.str.strip().str.lower()
+    st.subheader("File 2 Columns")
+    st.write(df2.columns.tolist())
 
-    # Rename to standard names
-    rename_map = {
-        "stock name": "stock_name",
-        "symbol": "symbol",
-        "price": "price",
-        "% chg": "chg"
-    }
-    df1 = df1.rename(columns=rename_map)
-    df2 = df2.rename(columns=rename_map)
+    # ⚠️ At this point we don't know exact column names
+    # Once you confirm the correct names, we will update this merge line
+    try:
+        merged = pd.merge(df1, df2, on=["stock_name", "symbol"], suffixes=("_1", "_2"))
 
-    # Merge on Stock Name + Symbol
-    merged = pd.merge(df1, df2, on=["stock_name", "symbol"], suffixes=("_1", "_2"))
+        # Calculate differences
+        merged["chg_diff"] = merged["chg_1"] - merged["chg_2"]
+        merged["price_diff"] = merged["price_1"] - merged["price_2"]
 
-    # Calculate Differences
-    merged["price_diff"] = merged["price_1"] - merged["price_2"]
-    merged["chg_diff"] = merged["chg_1"] - merged["chg_2"]
+        # Sort by chg_diff descending
+        merged = merged.sort_values(by="chg_diff", ascending=False)
 
-    # Order by Chg_Diff desc
-    merged = merged.sort_values(by="chg_diff", ascending=False)
+        # Show final comparison table
+        st.subheader("Comparison Result")
+        st.dataframe(merged)
 
-    # Show table
-    st.subheader("📑 Comparison Result")
-    st.dataframe(
-        merged[
-            ["stock_name", "symbol", "price_1", "price_2", "price_diff", "chg_1", "chg_2", "chg_diff"]
-        ]
-    )
-
-    # Prepare Excel for download
-    output = BytesIO()
-    merged.to_excel(output, index=False, engine="openpyxl")
-    st.download_button(
-        label="📥 Download Result as Excel",
-        data=output.getvalue(),
-        file_name="comparison_result.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+        # Download button
+        st.download_button(
+            label="📥 Download Comparison",
+            data=merged.to_csv(index=False).encode("utf-8"),
+            file_name="comparison.csv",
+            mime="text/csv"
+        )
+    except Exception as e:
+        st.error(f"⚠️ Merge failed: {e}")
+        st.info("Please check the column names shown above and update merge keys.")
