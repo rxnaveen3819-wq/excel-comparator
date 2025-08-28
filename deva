@@ -79,7 +79,10 @@ if choice == "Add Product":
     name = st.text_input("Product Name")
     price = st.number_input("Price", min_value=0.0, step=0.1)
     if st.button("Add Product"):
-        add_product(name, price)
+        if name.strip() != "":
+            add_product(name.strip(), price)
+        else:
+            st.error("❌ Product name cannot be empty.")
 
 elif choice == "Inward":
     st.subheader("📦 Inward Entry")
@@ -120,4 +123,7 @@ elif choice == "Stock Report":
     today_sales = pd.read_sql(query_today, conn)
     st.write("🛒 **Today's Sales**")
     st.dataframe(today_sales)
-    st.write("💰 Total Sales: ", today_sales["total_sales"].sum() if not today_sales.empty else 0)
+    if not today_sales.empty:
+        st.write("💰 Total Sales: ", today_sales["total_sales"].sum())
+    else:
+        st.write("💰 Total Sales: 0")
